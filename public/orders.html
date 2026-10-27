@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>My Orders — SoukStore</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header id="site-header"></header>
+  <main class="container">
+    <h1>My orders</h1>
+    <div id="orders"></div>
+  </main>
+  <footer>Enjoy your shopping with SoukStore ° 2026</footer>
+
+  <script src="/js/app.js"></script>
+  <script>
+    const root = document.getElementById('orders');
+
+    async function load() {
+      try {
+        const { orders } = await App.api('/orders/mine');
+        if (!orders.length) {
+          root.innerHTML = `<div class="card empty"><div class="big">📦</div><p>You haven't ordered anything yet.</p><a href="/" class="btn">Go shopping</a></div>`;
+          return;
+        }
+        root.innerHTML = orders.map((o) => `
+          <div class="card order">
+            <div class="order-head">
+              <div><b>Order #${o.id}</b> <span style="color:var(--muted)">· ${new Date(o.created_at + 'Z').toLocaleString()}</span></div>
+              <span class="status ${o.status}">${o.status}</span>
+            </div>
+            <div class="order-items">${o.items.map((i) => `${i.quantity} × ${App.esc(i.name)} (${App.money(i.unit_price)})`).join('<br>')}</div>
+            <div class="order-head" style="margin:12px 0 0">
+              <span>Ship to: ${App.esc(o.shipping_name)}, ${App.esc(o.shipping_address)}</span>
+              <span><b>${App.money(o.total)}</b>
+                ${o.status === 'pending' ? `<button class="btn ghost sm" data-cancel="${o.id}">Cancel</button>` : ''}</span>
+            </div>
+          </div>`).join('');
+      } catch (e) {
+        root.innerHTML = `<div class="card empty">${App.esc(e.message)}</div>`;
+      }
+    }
+
+    root.onclick = async (e) => {
+      const id = e.target.dataset.cancel;
+      if (!id || !confirm(`Cancel order #${id}?`)) return;
+      try {
+        await App.api(`/orders/${id}/cancel`, { method: 'POST' });
+        App.toast(`Order #${id} cancelled`);
+        load();
+      } catch (err) { App.toast(err.message, 'error'); }
+    };
+
+    if (App.requireLogin()) load();
+  </script>
+</body>
+</html>

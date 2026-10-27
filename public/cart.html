@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cart — SoukStore</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header id="site-header"></header>
+  <main class="container">
+    <h1>Your cart</h1>
+    <div id="cart"></div>
+  </main>
+  <footer>Enjoy your shopping with SoukStore ° 2026</footer>
+
+  <script src="/js/app.js"></script>
+  <script>
+    const root = document.getElementById('cart');
+
+    function render() {
+      const cart = App.getCart();
+      if (!cart.length) {
+        root.innerHTML = `<div class="card empty"><div class="big">🛒</div><p>Your cart is empty.</p><a href="/" class="btn">Start shopping</a></div>`;
+        return;
+      }
+      const user = App.getUser();
+      const total = App.cartTotal();
+      root.innerHTML = `
+        <div class="cart-layout">
+          <div class="card">
+            ${cart.map((l) => `
+              <div class="cart-line">
+                ${App.productThumb(l, 'xs')}
+                <div class="info">
+                  <h4><a href="/product.html?id=${l.id}">${App.esc(l.name)}</a></h4>
+                  <span style="color:var(--muted)">${App.money(l.price)} each</span>
+                </div>
+                <div class="qty" style="margin:0">
+                  <button data-dec="${l.id}">−</button>
+                  <input type="number" value="${l.quantity}" min="1" max="${l.stock}" data-qty="${l.id}" />
+                  <button data-inc="${l.id}">+</button>
+                </div>
+                <b style="min-width:100px;text-align:right">${App.money(l.price * l.quantity)}</b>
+                <button class="btn ghost sm" data-remove="${l.id}" title="Remove">✕</button>
+              </div>`).join('')}
+          </div>
+
+          <div class="card">
+            <h3 style="margin-top:0">Order summary</h3>
+            <div class="summary-row"><span>Items</span><span>${App.cartCount()}</span></div>
+            <div class="summary-row"><span>Shipping</span><span>Free</span></div>
+            <div class="summary-row total"><span>Total</span><span>${App.money(total)}</span></div>
+            ${user ? `
+              <form id="checkout">
+                <h3>Shipping details</h3>
+                <label>Full name</label><input name="name" required value="${App.esc(user.name)}" />
+                <label>Address</label><textarea name="address" rows="2" required placeholder="Street, city, postal code"></textarea>
+                <label>Phone</label><input name="phone" required placeholder="+216 …" />
+                <p style="color:var(--muted);font-size:.85rem">💵 Payment: cash on delivery</p>
+                <button class="btn block" type="submit">Place order</button>
+                <div class="error-msg" id="err"></div>
+              </form>` : `
+              <p style="color:var(--muted)">Log in to complete your order.</p>
+              <a class="btn block" href="/login.html?next=/cart.html">Login to checkout</a>`}
+          </div>
+        </div>`;
+
+      const form = document.getElementById('checkout');
+      if (form) form.onsubmit = placeOrder;
+    }
+
+    root.addEventListener('click', (e) => {
+      const t = e.target;
+      const line = (id) => App.getCart().find((l) => l.id === Number(id));
+      if (t.dataset.inc) { const l = line(t.dataset.inc); App.setQty(l.id, l.quantity + 1); render(); }
+      if (t.dataset.dec) { const l = line(t.dataset.dec); App.setQty(l.id, l.quantity - 1); render(); }
+      if (t.dataset.remove) { App.setQty(Number(t.dataset.remove), 0); render(); }
+    });
+    root.addEventListener('change', (e) => {
+      if (e.target.dataset.qty) { App.setQty(Number(e.target.dataset.qty), parseInt(e.target.value, 10) || 0); render(); }
+    });
+
+    async function placeOrder(e) {
+      e.preventDefault();
+      const f = new FormData(e.target);
+      const btn = e.target.querySelector('button[type=submit]');
+      btn.disabled = true;
+      try {
+        const { order } = await App.api('/orders', {
+          method: 'POST',
+          body: {
+            items: App.getCart().map((l) => ({ productId: l.id, quantity: l.quantity })),
+            shipping: { name: f.get('name'), address: f.get('address'), phone: f.get('phone') },
+          },
+        });
+        App.clearCart();
+        root.innerHTML = `
+          <div class="card empty">
+            <div class="big">🎉</div>
+            <h2>Order #${order.id} confirmed!</h2>
+            <p>Total: <b>${App.money(order.total)}</b> — we'll deliver to ${App.esc(order.shipping_address)}.</p>
+            <a href="/orders.html" class="btn">View my orders</a>
+          </div>`;
+      } catch (err) {
+        document.getElementById('err').textContent = err.message;
+        btn.disabled = false;
+      }
+    }
+
+    render();
+  </script>
+</body>
+</html>

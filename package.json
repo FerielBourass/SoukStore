@@ -1,0 +1,28 @@
+{
+  "name": "codealpha-ecommerce-store",
+  "version": "1.0.0",
+  "description": "CodeAlpha Full Stack Internship - Task 1: Simple E-commerce Store (Express.js + SQLite + vanilla JS)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning server.js",
+    "dev": "node --disable-warning=ExperimentalWarning --watch server.js",
+    "seed": "node --disable-warning=ExperimentalWarning db.js --reset"
+  },
+  "keywords": [
+    "codealpha",
+    "ecommerce",
+    "express",
+    "sqlite",
+    "fullstack"
+  ],
+  "author": "Iheb Brahmi",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "express": "^5.3.0",
+    "jsonwebtoken": "^9.0.3"
+  }
+}

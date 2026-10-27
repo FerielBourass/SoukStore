@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SoukStore — Shop</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header id="site-header"></header>
+  <main class="container">
+    <section class="hero">
+      <h1>Everything you need, in one souk.</h1>
+      <p>Browse products, add them to your cart and check out in seconds.</p>
+    </section>
+
+    <div class="filters">
+      <input id="search" type="search" placeholder="Search products…" />
+      <select id="sort">
+        <option value="newest">Newest</option>
+        <option value="price_asc">Price: low → high</option>
+        <option value="price_desc">Price: high → low</option>
+        <option value="name">Name A → Z</option>
+      </select>
+    </div>
+    <div class="chips" id="categories"></div>
+    <div class="grid" id="products"></div>
+  </main>
+  <footer>Enjoy your shopping with SoukStore ° 2026</footer>
+
+  <script src="/js/app.js"></script>
+  <script>
+    let state = { search: '', category: '', sort: 'newest' };
+    let products = [];
+
+    function stockLabel(p) {
+      if (p.stock === 0) return '<span class="stock out">Out of stock</span>';
+      if (p.stock <= 5) return `<span class="stock low">Only ${p.stock} left</span>`;
+      return '<span class="stock">In stock</span>';
+    }
+
+    function render() {
+      const grid = document.getElementById('products');
+      if (!products.length) {
+        grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="big">🔍</div>No products match your search.</div>';
+        return;
+      }
+      grid.innerHTML = products.map((p) => `
+        <div class="product-card">
+          <a href="/product.html?id=${p.id}">${App.productThumb(p)}</a>
+          <div class="body">
+            <span class="cat">${App.esc(p.category)}</span>
+            <a href="/product.html?id=${p.id}"><h3>${App.esc(p.name)}</h3></a>
+            ${stockLabel(p)}
+            <div class="row">
+              <span class="price">${App.money(p.price)}</span>
+              <button class="btn sm" data-add="${p.id}" ${p.stock === 0 ? 'disabled' : ''}>Add to cart</button>
+            </div>
+          </div>
+        </div>`).join('');
+    }
+
+    async function load() {
+      const qs = new URLSearchParams(state).toString();
+      try {
+        products = (await App.api(`/products?${qs}`)).products;
+        render();
+      } catch (e) { App.toast(e.message, 'error'); }
+    }
+
+    async function loadCategories() {
+      const { categories } = await App.api('/products/categories');
+      const box = document.getElementById('categories');
+      box.innerHTML = ['All', ...categories].map((c) =>
+        `<button class="chip ${c === 'All' ? 'active' : ''}" data-cat="${c === 'All' ? '' : App.esc(c)}">${App.esc(c)}</button>`).join('');
+      box.onclick = (e) => {
+        const btn = e.target.closest('.chip');
+        if (!btn) return;
+        box.querySelectorAll('.chip').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.category = btn.dataset.cat;
+        load();
+      };
+    }
+
+    let timer;
+    document.getElementById('search').oninput = (e) => {
+      clearTimeout(timer);
+      timer = setTimeout(() => { state.search = e.target.value.trim(); load(); }, 250);
+    };
+    document.getElementById('sort').onchange = (e) => { state.sort = e.target.value; load(); };
+    document.getElementById('products').onclick = (e) => {
+      const btn = e.target.closest('[data-add]');
+      if (!btn) return;
+      const p = products.find((x) => x.id === Number(btn.dataset.add));
+      if (p) App.addToCart(p, 1);
+    };
+
+    loadCategories();
+    load();
+  </script>
+</body>
+</html>
