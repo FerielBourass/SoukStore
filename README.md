@@ -88,4 +88,4 @@ To reset the database: `npm run seed`
 
 ---
 
-Built by **Iheb Brahmi** for the CodeAlpha Full Stack Development Internship.
+Built by **Feriel Bourass** for the CodeAlpha Full Stack Development Internship.
